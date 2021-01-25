@@ -1,0 +1,216 @@
+=======================================dht_sqlite==================================================
+
+import adafruit_dht
+sensor = Adafruit_DHT.DHT11
+
+
+gpio = 24
+humidity, temprature = Adafruit_DHT.read_retry(sensor, gpio)
+
+if humidity is not None and temprature is not None:
+	print('Temp={0:0.1f}*C Humidity{1:0.1f}%'.format(temprature, humidity))
+else:
+	print('Failed to get reading')
+
+
+=================================I2C(LED ON OF IN AURDINO)=================================================
+from smbus import SMBus
+addr = 0x8
+bus = SMBus(1)
+
+numb = 1
+
+print("Enter 1 for On or 0 for OFF")
+while numb == 1:
+    ledstate = input(">>>>    ")
+    #block = bus.read_byte_data(8, 1)
+    #print(block)
+    if ledstate == "1":
+        bus.write_byte(addr, 0x1)
+        block = bus.read_byte_data(8,2)
+        print(block)
+    elif ledstate == "0":
+        bus.write_byte(addr, 0x0)
+    else:
+        numb = 0
+
+===============================mqtt_chat.py==================================
+
+import context
+import paho.mqtt.client as mqtt
+
+def on_connect(client, userdata, flags, rc):
+    print(f"Connected with result code {rc}")
+    client.subscribe("rsp/topic")
+    print("Waiting for someone to send you a message...")
+
+def on_message(client, userdata, msg):
+    print(f"Received Message {msg.payload} from {msg.topic}")
+    text = input("Enter your message, to send: ")
+    client.publish(topic="rsp/pub", payload=text, qos=1, retain=False)
+    print("Your message send. Waiting for reply...")
+
+client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+client.connect("broker.emqx.io", 1883, 60)
+client.loop_forever()
+
+
+================================mqtt_test.py=========================
+import context
+import paho.mqtt.client as mqtt
+
+def on_connect(client, userdata, flags, rc):
+    print(f"Connected with result code {rc}")
+    client.subscribe("raspberry/topic")
+def on_message(client, userdata, msg):
+    print("${msg.topic} {msg.payload}")
+
+#mclient = mqtt.client()
+mclient =mqtt.Client()
+mclient.on_connect = on_connect
+mclient.on_message = on_message
+#mclient.will_set('raspberry/status', b'{"status":"off"}')
+#mclient.connect("brocker.emqx.io", 1883, 60)
+mclient.connect("mqtt.eclipse.org", 1883,60)
+mclient.publish("topichl","it",qos=0)
+
+mclient.loop_forever()
+
+
+======================SPI.py==============================
+import spidev
+import time
+
+spi = spidev.SpiDev(0,0)
+spi.open(0,1)
+msg = 0xAA
+spi.max_speed_hz = 115200
+while 1:
+    spi.writebytes([0x04, 0x06])
+    y = spi.readbytes(1)
+    print(y)
+    time.sleep(0.5)
+
+=========================================uart.py (serialbus)==============================
+import serial
+if __name__ == '__main__':
+    #ser = serial.Serial('/dev/ttyACM0', 9600, timeout = 1)
+    ser = serial.Serial('/dev/ttyS0', 9600, timeout = 1)
+    ser.flush()
+    while True:
+        if ser.in_waiting > 0:
+            line = ser.readline().decode('utf-8').rstrip()
+            print(line)
+
+=====================================I2C_LED_ON_OFF=========================
+import context
+from smbus import SMBus
+import paho.mqtt.client as mqtt
+
+client = mqtt.Client()
+broker_url="broker.emqx.io"
+broker_port=1883
+addr = 0x8
+bus = SMBus(1)
+print("Enter 1 for Led on Or 0 Forn OFF");
+number=1
+while number == 1:
+    
+    ledstatus= input("1 or 0 Take input:-")
+    if ledstatus == "1":
+        bus.write_byte(addr,0x10)
+        block = bus.read_byte_data(8,1);
+        client.connect(broker_url,broker_port)
+        client.publish(topic="TestingTopic",payload=block,qos=0)
+        print(block)
+    elif ledstatus == "0":
+        bus.write_byte(addr,0x00)
+    else:
+        number=0
+
+=======================================db_connection_using_sensors===========================
+import RPi.GPIO as GPIO
+import time
+import sys
+import sqlite3
+
+GPIO.setwarnings(False);
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(18,GPIO.IN)
+GPIO.setup(24,GPIO.OUT);
+
+DB_NAM = "motion_db"
+
+conn = sqlite3.connect(DB_NAM)
+curs = conn.cursor()
+
+curs.execute('create table IF NOT EXISTS motions(motion_id INTEGER PRIMARY KEY AUTOINCREMENT,mtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,message VARCHAR(50))');
+while True:
+    i = GPIO.input(18)
+    if i ==0:
+        print("NO ANY MOTION");
+        time.sleep(1);
+    if i ==1:
+        curs.execute("INSERT INTO MOTIONS(message) values('motion detected')");
+        conn.commit();
+        print("motion detected")
+        GPIO.output(24,1);
+        time.sleep(5);
+        GPIO.output(24,0);
+        
+conn.close()
+
+============================================humidity_sesor======================================
+# This file has been written to your home directory for convenience. It is
+# saved as "/home/pi/humidity-2020-11-26-12-02-12.py"
+
+from sense_emu import SenseHat
+
+sense = SenseHat()
+
+green = (0, 255, 0)
+white = (255, 255, 255)
+
+while True:
+    humidity = sense.humidity
+    humidity_value = 64 * humidity / 100
+    pixels = [green if i < humidity_value else white for i in range(64)]
+    sense.set_pixels(pixels)
+
+============================================mqtt======================================
+
+import sqlite3
+import paho.mqtt.client as mqtt
+
+con = sqlite3.connect('mydb')
+curs = con.cursor()
+
+def on_connect(client,userdata,flags,rc):
+    print(f'connect {rc}')
+
+def on_message(client,userdata,msg):
+    curs.execute('select * from data order by id DESC limit 3');
+    x = curs.fetchall()
+    for row in x:
+                print (row)
+    print(f'msg recived: {msg.payload}')
+    y = msg.payload
+    curs.execute('insert into data(msg) values(?)',(y,));
+    con.commit()
+    con.close()
+
+client = mqtt.Client();
+client.on_connect = on_connect
+client.on_message = on_message
+client.connect('broker.emqx.io',1883)
+
+client.subscribe('testingtopic')
+client.loop_forever()
+
+
+
+
+fuser mydb
+kill -9 5220

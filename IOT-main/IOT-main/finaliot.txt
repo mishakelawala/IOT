@@ -1,0 +1,466 @@
+1. Write program to Publish message "welcome to VNSGU Roll no: " on Topic
+"mscit/testing1" using MQTT protocol and update published message date & time in
+sqlite database. Print last 10 records of sqlite on screen one by one at 1-second delay
+
+Write program to subscribe message on Topic "mscit/testing2" using MQTT protocol and
+update subscribed message date & time in sqlite database. Print last 05 records of sqlite
+on screen one by one at 1-second delay
+
+Write program to subscribe message on Topic "mscit/testing3" using MQTT protocol.
+Update subscribed payload message in sqlite database and Print last 05 records of sqlite
+on screen one by one at 1-second delay
+
+-->publish.py
+
+import context
+import time
+import paho.mqtt.client as mqtt
+import json
+import sqlite3
+
+broker_url = "broker.emqx.io"
+broker_port = 1883
+
+client = mqtt.Client()
+client.connect(broker_url, broker_port)
+
+#connection = sqlite3.connect("externalexam.db")
+#cur = connection.cursor()
+message = "welcome to VNSGU Roll no:11-RiddhiGaliawala"
+while True:
+    try:  
+      client.publish(topic="mscit/riddhi",payload=message,qos=0,retain=False)
+      #cur.execute("INSERT INTO mqtt (message) VALUES(?)",[message])
+      #print("------------MESSAGE INSERTED----------")
+      #cur.execute("COMMIT")
+      #try:
+      #    cur.execute("SELECT * FROM mqtt ORDER BY id DESC")
+      #    records = cur.fetchmany(10)
+      #    for row in records:
+      #        print("Id: ", row[0])
+      #        print("Message: ", row[1])
+      #        print("Date & Time: ", row[2])
+      #        time.sleep(1)
+      #except sqlite3.Error as error:
+      #3        print("Failed to read data from sqlite table", error)
+    except RuntimeError as error:
+        print(error.args[0])
+        time.sleep(3.0)
+        continue
+    except Exception as error:
+        raise error
+    time.sleep(3.0)
+
+
+-->subscribe.py
+
+import json
+import context
+import time
+import sqlite3
+import paho.mqtt.client as mqtt
+
+connection = sqlite3.connect("externalexam.db")
+cur = connection.cursor()
+
+def on_message(client, userdata, msg):
+    print(msg.topic+ " "+ str(msg.payload) + "\n")
+    decodedData = msg.payload.decode("utf-8")
+    print(decodedData)
+    cur.execute("INSERT INTO mqtt (message) VALUES(?)",[decodedData])
+    cur.execute("COMMIT")
+    try:
+        cur.execute("SELECT * FROM mqtt ORDER BY id DESC")
+        records = cur.fetchmany(10)
+        print("Total rows are:  ", len(records))
+        for row in records:
+            print("Id: ", row[0])
+            print("Message: ", row[1])
+            print("Date & Time: ", row[2])
+            time.sleep(1)
+    except sqlite3.Error as error:
+        print("Failed to read data from sqlite table", error)
+broker_url = "broker.emqx.io"
+broker_port = 1883
+client = mqtt.Client()
+client.on_message = on_message
+client.connect(broker_url,broker_port)
+client.subscribe("mscit/riddhi", qos=0)
+client.loop_forever()
+
+------------------------------------------------------------------------------------
+
+2. Write program to detect motion using PIR sensor and update date & time in sqlite database
+and
+publish message "motion detected" on topic "Mscit/testing1" using MQTT protocol.
+
+--> publish.py
+
+pimport context
+import time
+import paho.mqtt.client as mqtt
+import json
+import sqlite3
+import board
+import RPi.GPIO as GPIO
+
+broker_url = "broker.emqx.io"
+broker_port = 1883
+
+client = mqtt.Client()
+client.connect(broker_url, broker_port)
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(18,GPIO.IN)
+GPIO.setup(24,GPIO.OUT)
+
+while True:
+    try:
+        i = GPIO.input(18)
+        #if i ==0: #for led off
+        #    print("NO ANY MOTION")
+        #    time.sleep(1);
+        if i ==1: #for led on
+            message = 'Motion Detected'
+            print(message)
+            GPIO.output(24,1);
+            time.sleep(5);
+            GPIO.output(24,0);
+      client.publish(topic="mscit/riddhi",payload=message,qos=0,retain=False)
+    except RuntimeError as error:
+        print(error.args[0])
+        time.sleep(3.0)
+        continue
+    except Exception as error:
+        raise error
+    time.sleep(3.0)
+
+
+--> subscribe.py
+
+import json
+import context
+import time
+import sqlite3
+import paho.mqtt.client as mqtt
+
+# create table motion(id integer primary key autoincrement,curdate datetime); to create table in sql from terminal
+connection = sqlite3.connect("externalexam.db")
+cur = connection.cursor()
+
+def on_message(client, userdata, msg):
+    print(msg.topic+ " "+ str(msg.payload) + "\n")
+    decodedData = msg.payload.decode("utf-8")
+    print(decodedData)
+    cursor.execute("INSERT INTO motion(curdate) VALUES(CURRENT_TIMESTAMP)")
+    cursor.execute("COMMIT")
+    #try:
+    #    cur.execute("SELECT * FROM mqtt ORDER BY id DESC")
+    #    records = cur.fetchall()
+    #    for row in records:
+    #        print("Id: ", row[0])
+    #        print("temp_C: ", row[1])
+    #        print("temp_f: ", row[2])
+    #         print("humidity:" , row[3])
+            time.sleep(1)
+    except sqlite3.Error as error:
+        print("Failed to read data from sqlite table", error)
+broker_url = "broker.emqx.io"
+broker_port = 1883
+client = mqtt.Client()
+client.on_message = on_message
+client.connect(broker_url,broker_port)
+client.subscribe("mscit/riddhi", qos=0)
+client.loop_forever()
+
+--------------------------------------------------------------------------------
+3. Write program to sense temprature and humidity using DHT-11 sensor connected on GPIO-14.
+Update temprature, humidity, & sensed time in Sqlite database and publish humidity value on
+topic "Mscit/testin1" using Mqtt protocol.
+
+-->publish.py
+
+import context
+import time
+import paho.mqtt.client as mqtt
+import json
+import sqlite3
+import adafruit_dht
+import board
+import RPi.GPIO as GPIO
+
+broker_url = "broker.emqx.io"
+broker_port = 1883
+
+client = mqtt.Client()
+client.connect(broker_url, broker_port)
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(14,GPIO.IN)
+
+#Use this when no pin is told to use
+#dhtDevice = adafruit_dht.DHT11(board.D4)
+
+dhtDevice = adafruit_dht.DHT11(14)
+
+while True:
+    try:
+        temp_c = dhtDevice.temperature
+        temp_f = temp_c*(9/5)+3
+        humidity = dhtDevice.humidity
+        message = str(humidity)
+        #message = str(temp_c) + ',' + str(temp_f) + ',' +  str(humidity)
+        cursor.execute("INSERT INTO tmphum(temperature_c, temperature_f, humidity) VALUES(?,?,?)",[temp_c,temp_f,humidity])
+        cursor.execute("COMMIT")
+      client.publish(topic="mscit/riddhi",payload=message,qos=0,retain=False)
+    except RuntimeError as error:
+        print(error.args[0])
+        time.sleep(3.0)
+        continue
+    except Exception as error:
+        raise error
+    time.sleep(3.0)
+
+
+
+-->subscribe.py
+
+import json
+import context
+import time
+import sqlite3
+import paho.mqtt.client as mqtt
+
+connection = sqlite3.connect("externalexam.db")
+cur = connection.cursor()
+
+def on_message(client, userdata, msg):
+    print(msg.topic+ " "+ str(msg.payload) + "\n")
+    decodedData = msg.payload.decode("utf-8")
+    print(decodedData)
+    #decodedData = msg.payload.decode().split(',')
+    #print(decodedData)
+    #cursor.execute("INSERT INTO tmphum(temperature_c, temperature_f, humidity) VALUES(?,?,?)",[decodedData[0],[decodedData[1],[decodedData[2]])
+    #cursor.execute("COMMIT")
+    #try:
+    #    cur.execute("SELECT * FROM mqtt ORDER BY id DESC")
+    #    records = cur.fetchall()
+    #    for row in records:
+    #        print("Id: ", row[0])
+    #        print("temp_C: ", row[1])
+    #        print("temp_f: ", row[2])
+    #         print("humidity:" , row[3])
+            time.sleep(1)
+    except sqlite3.Error as error:
+        print("Failed to read data from sqlite table", error)
+broker_url = "broker.emqx.io"
+broker_port = 1883
+client = mqtt.Client()
+client.on_message = on_message
+client.connect(broker_url,broker_port)
+client.subscribe("mscit/riddhi", qos=0)
+client.loop_forever()
+
+--------------------------------------------------------------------------------------
+
+4. Write program at raspberry pi to subscribe topic "Mscit/testing2" using MQtt protocol. MQTT
+message Rreceived value send to arduino uno board using I2C device and get return value from
+arduino uno to rapberry pi and print arduino uno connected message.(Change code of spi to i2c in this program)
+
+Write program at raspberry pi to subscribe topic "Mscit/testing2" using MQtt protocol. MQTT
+message Rreceived value send to arduino uno board using SPI device and get return value from
+arduino uno to rapberry pi and print arduino uno connected message. 
+
+-->spimqttsubscribe.py
+
+import json
+import context
+import time
+import paho.mqtt.client as mqtt
+import spidev
+
+
+def on_connect(client,userdata,flag,rc):
+    print("Connected with {rc}")
+    client.suscribe("mscit/riddhi",qos=0)
+    
+def on_message(client, userdata, msg):
+    print(msg.topic+ " "+ str(msg.payload) + "\n")
+    spi.writebytes(msg.payload)
+    data = spi.readbytes(1)
+    print(data)
+    if data[0] != 0:
+        print('Aurdino is connected')
+        
+broker_url = "broker.emqx.io"
+broker_port = 1883
+client = mqtt.Client()
+client.on_connect = on_connect
+client.on_message = on_message
+client.connect(broker_url,broker_port)
+client.loop_forever()
+
+
+-----------------------------------------------------------------------------
+
+5.  Send content from raspberry pi to preprogrammed arduino uno board using I2c device and get
+response fro arduino board . note message received date and time in Sqlite database.
+
+from smbus import SMBus
+import sqlite3
+
+connection = sqlite3.connect("external.db")
+cursor = connection.cursor()
+addr = 0x8
+bus = SMBus(1)
+
+num = 1
+
+print("Enter 1 for ON or 0 for OFF:")
+while num==1:
+    ledstate = input(">>>>>> ")
+    if ledstate == '1':
+        bus.write_byte(addr,0x1)
+        block = bus.read_byte_data(8,1)
+        if(block == 86):
+            print("Aurdino is connected")
+        print(block)
+        message = str(block)
+        cursor.execute("INSERT INTO i2ctb(message) VALUES(?)",[message])
+        cusor.execute("COMMIT")
+    else if ledstate == '0':
+        bus.write_byte(addr,0x0)
+    else:
+        num=0
+
+----------------------------------------------------------------------------------
+
+6. Send content from raspberry pi to preprogrammed arduino uno board using SPI device and get
+response fro arduino board . note message received date and time in Sqlite database.
+
+import spidev
+import time
+import sqlite3
+
+connection = sqlite3.connect("external.db")
+cursor = connection.cursor()
+
+spi = spidev.SpiDev(0,0)
+spi.open(0,0)
+msg = 0xAA
+spi.max_speed_hz = 115200
+
+while 1:
+    spi.writebytes([0x4,0x86])
+    data = spi.readbyte(1)
+    print(data)
+    if data[0] != 0:
+        print("Aurdino is connected")
+    cursor.execute("INSERT INTO spitb(message) VALUES(?)",[data])
+    cursor.execute("COMMIT")
+    time.sleep(1)
+
+--------------------------------------------------------------------------------
+7. Sense humidity and temperature Data from DHT-11sensor connected D-14 data pin and store
+it in sqlite data base with date and time
+
+import time
+import adafruit_DHT
+import board
+import RPi.GPIO as GPIO
+import sqlite3
+
+connection = sqlite3.connect("external.db")
+cursor = connection.cursor()
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(14,GPIO.IN)
+
+#Use this when no pin is told to use
+#dhtDevice = adafruit_dht.DHT11(board.D4)
+
+dhtDevice = adafruit_dht.DHT11(14)
+
+while True:
+    try:
+        temp_c = dhtDevice.temperature
+        temp_f = temp_c*(9/5)+32
+        humidity = dhtDevice.humidity
+        cursor.execute("INSERT INTO tmphum(temperature_c, temperature_f, humidity) VALUES(?,?,?)",[temp_c,temp_f,humidity])
+        time.sleep(1)
+    except RuntimeError as error:
+        print(error.args[0])
+    time.sleep(1)
+-----------------------------------------------------------------------------------------------------
+--> cpu subscribe
+import json
+import context
+import time
+import sqlite3
+import paho.mqtt.client as mqtt
+
+broker_url = "broker.emqx.io"
+broker_port = 1883
+
+connection= sqlite3.connect("external.db")
+cursor=connection.cursor()
+def on_message(client,userdata,msg):
+    print(msg.topic+" "+str(msg.payload) + "\n")
+    decodedData = msg.payload.decode().split(',')
+    cursor.execute("INSERT INTO cputb(cpu,ram) VALUES(?,?)",[decodedData[0],decodedData[1]])
+    cursor.execute("COMMIT")
+        
+client = mqtt.Client()
+client.on_message = on_message
+client.connect(broker_url,broker_port)
+client.subscribe("mscit/viraj", qos=0)
+client.loop_forever()
+
+-->cpu publish
+
+import context
+import time
+import paho.mqtt.client as mqtt
+import json
+import psutil
+
+broker_url="broker.emqx.io"
+broker_port= 1883
+client=mqtt.Client()
+client.connect(broker_url,broker_port)
+
+while True:
+    try:
+        cpuper = psutil.cpu_percent(interval=20)
+        cpuram = psutil.virtual_memory().percent
+        message = str(cpuper) + "," + str(cpuram)
+        print(message)
+        client.publish(topic="mscit/viraj",payload=message,qos=0,retain=False)
+    except RuntimeError as error:
+        print(error,args[0])
+        time.sleep(3.0)
+        continue
+    except Exception as error:
+        raise error
+    time.sleep(3.0)
+
+---------------------------------------------------------------------------------
+-->uart.py
+
+import serial
+from time import sleep
+
+if __name__ == '__main__':
+    
+    ser = serial.Serial('/dev/ttyACM0',9600)
+    ser.flush()
+    while True:
+        ser.write(0x1)
+        if ser.in_waiting > 0:
+            line = ser.readline().decode('utf-8').rstrip()
+            print(line)
+            if(line == "0"):
+                print('Aurdino is connected but no data')
+            else:
+                print('Aurdino is not connected')
+

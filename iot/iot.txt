@@ -1,0 +1,94 @@
+1program:
+
+import RPi.GPIO as GPIO
+import time
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(18,GPIO.IN)
+GPIO.setup(24,GPIO.OUT)
+while True:
+        i=GPIO.input(18)
+        if i==0:
+                print("No detected!!")
+                GPIO.output(24,0)
+                time.sleep(5)
+        if i==1:
+                print("Detected!!")
+                GPIO.output(24,1)
+                time.sleep(1)
+
+run:
+no detected!!
+no detected!!
+no detected!!
+no detected!!
+
+1program sqlite:
+
+sqlite3 mydb
+CREATE TABLE groups(name TEXT);
+.tables
+nano prog1.py
+
+import RPi.GPIO as GPIO
+import time
+import sqlite3
+import sys
+from datetime import datetime,date
+conn=sqlite3.connect('mydb')
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(18,GPIO.IN)
+GPIO.setup(24,GPIO.OUT)
+while True:
+	i=GPIO.input(18)
+	if i==0:
+		try:
+			c=conn.cursor()
+			c.execute("insert into groups(name) values('not detected');")
+			conn.commit()
+		except e:
+			if conn:
+				conn.rollback()
+			print ("error")
+			sys.exit(1)
+		print ("not detected")
+		GPIO.output(24,0)
+		time.sleep(5)
+	if i==1:
+		c=conn.cursor()
+		c.execute("INSERT INTO groups(name) values(datetime('now'));")
+		conn.commit()
+		print ("Detected")
+		GPIO.output(24,1)
+		time.sleep(1)
+
+python3 prog1.py
+
+
+
+->prog2.py
+
+import time
+import board
+import adafruit_dht
+devicedht = adafruit_dht.DHT11(board.D4)
+while True:
+    try:
+        tempc=devicedht.temperature
+        tempf=tempc*(9/5)+32
+        humidity=devicedht.humidity
+        print ("Temp: {:.1f} F / {:.1f} C Humidity: {}% ".format(tempc,tempf,humidity))
+    except RuntimeError as error:
+        print (error.args[0])
+    time.sleep(2.0)
+
+
+
+->
+cd paho.mqtt.python
+cd examples
+nano h1_publish.py
+
+screenshot
+
